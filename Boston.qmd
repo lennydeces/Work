@@ -1,0 +1,1135 @@
+---
+title: "Boston"
+format: 
+  html:
+    code-fold: true
+    code-tools: true
+editor: visual
+---
+
+# Analysis on Boston Housing Data
+
+# BOSTON HOUSING DATA
+
+## Introduction
+
+This project aims to find the factors affecting the domestic property value in the city of Boston. Factors like per capita income, environmental factors, educational facilities, property size, etc were taken into consideration to determine the most significant parameters. We create multiple linear regression model using forward stepwise selection and compare its performance with the linear regression model containing all the variables. We use the following metrics to compare the performance of the models:R-squared value, Adjusted R-squared value, AIC, BIC and model Mean Squared Error (MSE).
+
+### Packages Required
+
+The following packages are required for the project:
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+library(corrr)
+library(corrplot)
+library(dplyr)
+library(DataExplorer)
+library(DT)
+library(gam)
+library(glmnet)
+library(gridExtra)
+library(ggplot2)
+library(leaps)
+library(MASS)
+library(PerformanceAnalytics)
+library(rpart)
+library(rpart.plot)
+library(tidyverse)
+```
+
+### Data Exploration
+
+#### Checking for Data Structure
+
+Our data contains 506 observations containing 14 variables. The datatypes are as follows:
+
+```{r}
+library(dplyr)
+
+#Boston data
+library(MASS)
+
+#loading data
+data(Boston)
+dim(Boston)
+
+cat("\n")
+
+colnames(Boston)
+```
+
+```{r}
+library(explore)
+Boston %>% 
+  explore_tbl()
+```
+
+```{r}
+Boston %>% 
+  explore(medv)
+```
+
+Without Transpose + RowBind
+
+```{r}
+#a look at first few rows
+head(Boston)
+
+# add row of variable descriptions
+var <- c("CRIM" = "per capita crime rate by town",
+         "ZN" = "proportion of residential land zoned for lots over 25,000 sq.ft.",
+         "INDUS" = "proportion of non-retail business acres per town",
+         "CHAS" = "Charles River dummy variable (= 1 if tract bounds river; 0 otherwise)",
+         "NOX" = "nitric oxides concentration (parts per 10 million)",
+         "RM" = "average number of rooms per dwelling",
+         "AGE" = "proportion of owner-occupied units built prior to 1940",
+         "DIS" = "weighted distances to five Boston employment centers",
+         "RAD" = "index of accessibility to radial highways",
+         "TAX" = "full-value property-tax rate per $10,000",
+         "PTRATIO" = "pupil-teacher ratio by town",
+         "B" = "1000(Bk - 0.63)^2 where Bk is the proportion of Black people by town",
+         "LSTAT" = "% lower status of the population",
+         "MEDV" = "median value of owner-occupied homes in $1000's")
+Boston_new <- rbind(var,Boston)
+rownames(Boston_new)[1] <- "Description"
+Boston_new
+```
+
+With Transpose + ColumnBind
+
+```{r}
+Boston_transpose <- data.frame(t(Boston))
+Boston_transpose
+```
+
+```{r}
+Description <- c("CRIM" = "per capita crime rate by town",
+         "ZN" = "proportion of residential land zoned for lots over 25,000 sq.ft.",
+         "INDUS" = "proportion of non-retail business acres per town",
+         "CHAS" = "Charles River dummy variable (= 1 if tract bounds river; 0 otherwise)",
+         "NOX" = "nitric oxides concentration (parts per 10 million)",
+         "RM" = "average number of rooms per dwelling",
+         "AGE" = "proportion of owner-occupied units built prior to 1940",
+         "DIS" = "weighted distances to five Boston employment centers",
+         "RAD" = "index of accessibility to radial highways",
+         "TAX" = "full-value property-tax rate per $10,000",
+         "PTRATIO" = "pupil-teacher ratio by town",
+         "B" = "1000(Bk - 0.63)^2 where Bk is the proportion of Black people by town",
+         "LSTAT" = "% lower status of the population",
+         "MEDV" = "median value of owner-occupied homes in $1000's")
+Boston_newer <- cbind(Description,Boston_transpose)
+Boston_newer
+```
+
+```{r}
+#a look at structure of the data set
+glimpse(Boston)
+```
+
+#### Data Summary
+
+A quick summary of the distribution of every variable in the data
+
+```{r}
+summary(Boston)
+```
+
+#### Checking for Null Values
+
+There are no null values to report in the data
+
+```{}
+```
+
+#### Data Sneak Peek
+
+A quick glance into the data:
+
+```{r}
+library(DT)
+Boston %>% datatable(caption = "Boston Housing")
+```
+
+### Correlation Matrices
+
+**Correlation of target variable with predictor variables:**
+
+-   `rm` and `lstat` are highly correlated with the target variable `medv`
+
+-   `black`, `dis`, `rm`, `chas`, `zn` are positively correlated with `medv`
+
+-   `crim`, `indus`, `nox`, `age`, `rad`, `tax`, `ptratio`, `lstat` are negatively correlated with `medv`
+
+<!-- -->
+
+```{r}
+#checking correlation between variables
+corrplot(cor(Boston), method = "number", type = "upper", diag = FALSE)
+```
+
+```{r}
+#checking correlation between variables
+corrplot(cor(Boston), method = "circle", type = "upper", diag = FALSE)
+```
+
+```{r}
+library(corrr)
+Boston %>% 
+  correlate() %>% 
+  focus(medv)
+```
+
+**Correlation among predictor variables:**
+
+On plotting the pairwise correlations between each of the variables, we see the following:\
+The highest positive correlations are between `rad` and `tax`, `indux` and `nox` and negative between `dis` and `age` and `dis` and `nox`.
+
+```{r}
+library(PerformanceAnalytics)
+chart.Correlation(Boston[,-14], histogram=TRUE, pch=19)
+```
+
+#### High Correlation Filter
+
+```{r}
+# Load the required packages
+library(caret)
+library(dplyr)
+
+Boston
+Boston_filtered <- Boston %>% select_if(is.numeric) %>% na.omit()
+
+# Calculate the correlation matrix
+cor_matrix <- cor(Boston_filtered)
+
+# Find highly correlated variables
+high_corr <- findCorrelation(cor_matrix, cutoff = 0.8)
+
+# Remove highly correlated variables
+Boston_filtered <- Boston_filtered[, -high_corr]
+
+# Print the filtered dataset
+print(Boston_filtered)
+```
+
+### Distributions
+
+#### Barcharts for Predictors
+
+```{r}
+library(ggplot2)
+qplot(Boston$medv, xlab = 'medv', ylab = 'Count', binwidth = 2, main="Frequency Histogram: Median value of owner-occupied homes in $1000's")
+```
+
+#### Scatterplots for Predictors
+
+We plot the scatter plots of target variable `medv` versus the other variables, we see that `rm` and `lstat` show parabolic nature
+
+```{r}
+library(ggplot2)
+library(tidyr)
+Boston %>%
+  gather(-medv, key = "var", value = "value") %>%
+  filter(var != "chas") %>%
+  ggplot(aes(x = value, y = medv)) +
+  geom_point() +
+  stat_smooth() +
+  facet_wrap(~ var, scales = "free") +
+  theme_bw()
+```
+
+#### Boxplots for Predictors
+
+Boxplots show no significant outliers in the data
+
+```{r}
+Boston %>%
+  gather(-medv, key = "var", value = "value") %>%
+  filter(var != "chas") %>%
+  ggplot(aes(x = '',y = value)) +
+  geom_boxplot(outlier.colour = "red", outlier.shape = 1) +
+  facet_wrap(~ var, scales = "free") +
+  theme_bw()
+```
+
+#### Histograms for Predictors
+
+The histograms of predictors give the following insights:
+
+-   `Rad` and `Tax` seem to have two different peaks separated by no data in between
+
+-   `rm` follows perfect normal distribution
+
+-   Most of the distributions here are skewed
+
+<!-- -->
+
+```{r}
+Boston %>%
+  gather(-medv, key = "var", value = "value") %>%
+  filter(var != "chas") %>%
+  ggplot(aes(x = value)) +
+  geom_histogram() +
+  facet_wrap(~ var, scales = "free") +
+  theme_bw()
+```
+
+### Splitting the Data
+
+We randomly split our data in 80:20 ratio as training data and test data. We will use our train data for modeling and test data for validation
+
+```{r}
+# Set the random seed for reproducibility
+set.seed(12420246)
+
+# Get the number of rows in the Boston dataset
+n_rows <- nrow(Boston)
+
+# Sample row indices for the training set
+train_indices <- sample(seq_len(n_rows), size = 0.8 * n_rows, replace = FALSE)
+
+# Subset the Boston dataset into the training set and the test set
+Boston_train <- Boston[train_indices, ]
+Boston_test <- Boston[-train_indices, ]
+```
+
+```{r}
+Boston_train
+```
+
+```{r}
+Boston_test
+```
+
+### Linear & Logistic Regression using all predictors
+
+We build up a Linear regression model using all variables present in the data\
+We notice that Indus and age have very high p-value and seem to be non-significant\
+The estimated coefficients are as follows:
+
+```{r}
+ggplot(data = Boston, aes(x = crim, y = medv)) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  xlab('CRIM') +
+  ylab('MEDV') +
+  ggtitle("Median value of owner-occupied homes in $1000's vs. Per capita crime rate by town")
+```
+
+```{r}
+# Build the linear regression model using all variables
+linear_model <- lm(medv ~ ., data = Boston_train)
+
+# View the summary of the model
+sum.linear_model <- summary(linear_model)
+sum.linear_model
+```
+
+```{r}
+## Convert the response variable to a binary outcome
+#med_value <- median(Boston$medv)
+#Boston$y0 <- as.factor(ifelse(Boston$medv >= med_value, 1, #0))
+#
+## Split the data into training and testing sets
+#set.seed(123)
+#train_index <- sample(nrow(Boston), nrow(Boston) * 0.8)
+#Boston_train <- Boston[train_index, ]
+#Boston_test <- Boston[-train_index, ]
+#
+## Fit a logistic regression model
+#logistic_model <- glm(y0 ~ ., data = Boston_train, family #= binomial())
+#logistic_model
+#
+## Evaluate the model on the test data
+#predicted_prob <- predict(logistic_model, newdata = #Boston_test, type = "response")
+#predicted_class <- ifelse(predicted_prob >= 0.5, 1, 0)
+#
+#accuracy <- sum(predicted_class == Boston_test$y0) / nrow#(Boston_test)
+#accuracy
+```
+
+### Naive Bayes Model
+
+```{r}
+#levels <- c("Below Median", "Above Median")
+#Boston_train$medv_cat <- factor(Boston_train$medv_cat, #levels = levels)
+#Boston_test$medv_cat <- factor(Boston_test$medv_cat, #levels = levels)
+#
+#levels(Boston_train$medv_cat)
+#levels(Boston_test$medv_cat)
+#
+#library(e1071)
+#nb_model <- naiveBayes(medv_cat ~ ., data = Boston_train)
+#
+#nb_pred <- predict(nb_model, newdata = Boston_test)
+#
+#library(caret)
+#confusionMatrix(nb_pred, Boston_test$medv_cat)
+#
+```
+
+#### Model Statistics
+
+Checking the model stats, using MSE, R-squared, adjusted R-squared, Test MSPE, AIC and BIC as metrics:
+
+```{r}
+# Create a data frame with the metrics and their preferred direction
+metrics <- c("MSE", "R-squared", "Adjusted R-squared", "Test MSPE", "AIC", "BIC")
+direction <- c("Smaller", "Larger", "Larger", "Smaller", "Smaller", "Smaller")
+metric_table <- data.frame(metrics, direction)
+
+# Print the table
+print(metric_table)
+
+```
+
+```{r}
+linear_model.mse <- (sum.linear_model$sigma)^2
+linear_model.rsq <- sum.linear_model$r.squared
+linear_model.arsq <- sum.linear_model$adj.r.squared
+test.pred.linear_model <- predict(linear_model, newdata=Boston_test) 
+linear_model.mpse <- mean((Boston_test$medv-test.pred.linear_model)^2)
+linear_model.aic <- AIC(linear_model)
+linear_model.bic <- BIC(linear_model)
+
+comparison_table <- c("model type", "MSE", "R-Squared", "Adjusted R-Squared", "Test MSPE", "AIC", "BIC")
+
+stats.linear_model <- c("full", linear_model.mse, linear_model.rsq, linear_model.arsq, linear_model.mpse, linear_model.aic, linear_model.bic)
+
+data.frame(cbind(comparison_table, stats.linear_model))
+```
+
+### Subset Selection
+
+We will use subset selection techniques for variable selection. The three methods employed are:
+
+-   Forward Variable selection
+
+-   Backward Variable Selection
+
+-   Exhaustive Variable Selection
+
+```{r}
+#Variable Selection using best subset regression
+model.subset <- regsubsets(medv ~ ., data = Boston_train, nbest = 1, nvmax = 13)
+summary(model.subset)
+```
+
+```{r}
+plot(model.subset, scale = "bic")
+```
+
+#### **Forward Variable Selection**
+
+We start off with Forward selection method, where we keep on adding influential variables to the model.\
+lstat, rm and ptration are the most significant variables\
+Following table shows the variables added to the model at each step, along with the BIC, R-squared, adj r-squared, cp values associated with the model
+
+```{r}
+library(leaps)
+forward_model <- regsubsets(medv~ ., data = Boston_train, nvmax = 13, method="forward")
+sum.forward_model <- summary(forward_model)
+
+forward_model.subsets <- cbind(sum.forward_model$which, sum.forward_model$bic, sum.forward_model$rsq, sum.forward_model$adjr2,sum.forward_model$cp)
+forward_model.subsets <- as.data.frame(forward_model.subsets) 
+colnames(forward_model.subsets)[15:18] <- c("BIC","rsq","adjr2","cp")
+forward_model.subsets
+```
+
+##### Plotting Model metrics
+
+Checking the 13 models with varying variable size, we plot the model metrics to find out the best model. R-squared keeps on increasing with added variables and hence will always favor model with highest number of variables\
+Model with 11 variables gives the highest Adjusted R-squared value and the lowest cp and BIC values
+
+```{r}
+#PLOTS OF R2, ADJ R2, CP, BIC#
+rsq <- data.frame(x = 1:13, y = round(sum.forward_model$rsq,5))
+forward_model.rsq.plot <- ggplot(data = rsq, aes(x = x, y = y)) + 
+  geom_point() + geom_line() + 
+  geom_text(aes(label=y), size=3, vjust=-0.5) +
+  scale_x_continuous(breaks=1:13)
+
+adjr2 <- data.frame(x = 1:13, y = round(sum.forward_model$adjr2,4))
+forward_model.adjrsq.plot <- ggplot(data = adjr2, aes(x = x, y = y)) + 
+  geom_point() + geom_line() + 
+  geom_text(aes(label=y), size=3, vjust=-0.5) +
+  scale_x_continuous(breaks=1:13)
+
+bic <- data.frame(x = 1:13, y = round(sum.forward_model$bic,4))
+forward_model.bic.plot <- ggplot(data = bic, aes(x = x, y = y)) + 
+  geom_point() + geom_line() + 
+  geom_text(aes(label=y), size=3, vjust=-0.5) +
+  scale_x_continuous(breaks=1:13)
+
+cp <- data.frame(x = 1:13, y = round(sum.forward_model$cp,4))
+forward_model.cp.plot <- ggplot(data = cp, aes(x = x, y = y)) + 
+  geom_point() + geom_line() + 
+  geom_text(aes(label=y), size=3, vjust=-0.5) +
+  scale_x_continuous(breaks=1:13)
+
+grid.arrange(forward_model.rsq.plot,forward_model.adjrsq.plot,forward_model.bic.plot,forward_model.cp.plot, ncol=2)
+
+```
+
+##### Selecting best subset
+
+Reiterating our findings from the plots, We find the best model is the model with all variables except age and indus
+
+```{r}
+#choose the model 13: the larger, the better (rsq)
+which.max(sum.forward_model$rsq)
+```
+
+```{r}
+#choose the model 11: the larger, the better (adjr)
+which.max(sum.forward_model$adjr2)
+```
+
+```{r}
+#choose the model 11: the smaller, the better (cp)
+which.min(sum.forward_model$cp)
+```
+
+```{r}
+#choose the model 9: the smaller, the better (bic)
+which.min(sum.forward_model$bic)
+```
+
+```{r}
+print("winner is model 11")
+coef(forward_model,11)
+```
+
+#### **Backward Variable Selection**
+
+Now we come to Backward selection method, where we keep on removing non-influential variables from the model.\
+lstat, rm and ptration are the most significant variables\
+Following table shows the variables included in different sized models, along with the BIC, R-squared, adj r-squared, cp values associated with the model
+
+```{r}
+backward_model <- regsubsets(medv~ ., data = Boston_train, nvmax = 13, method="backward")
+sum.backward_model <- summary(backward_model)
+
+backward_model.subsets <- cbind(sum.backward_model$which, sum.backward_model$bic, sum.backward_model$rsq, sum.backward_model$adjr2,sum.backward_model$cp)
+backward_model.subsets <- as.data.frame(backward_model.subsets) 
+colnames(backward_model.subsets)[15:18] <- c("BIC","rsq","adjr2","cp")
+backward_model.subsets
+```
+
+##### Plotting Model metrics
+
+Checking the 13 models with varying variable size, we plot the model metrics to find out the best model. R-squared keeps on increasing with added variables and hence will always favor model with highest number of variables\
+Model with 11 variables gives the highest Adjusted R-squared value and the lowest cp and BIC values This is consistent with the forward selection model
+
+```{r}
+#PLOTS OF R2, ADJ R2, CP, BIC#
+rsq <- data.frame(round(sum.backward_model$rsq,5))
+backward_model.rsq.plot <- ggplot(data = rsq, aes(y = rsq[,1], x = 1:13)) + 
+  geom_point() + geom_line() + 
+  geom_text(aes(label=rsq[,1]), size=3, vjust=-0.5) +
+  scale_x_continuous(breaks=1:13)
+
+adjr2 <- data.frame(round(sum.backward_model$adjr2,4))
+backward_model.adjrsq.plot <- ggplot(data = adjr2, aes(y = adjr2[,1], x = 1:13)) + 
+  geom_point() + geom_line() + 
+  geom_text(aes(label=adjr2[,1]), size=3, vjust=-0.5) +
+  scale_x_continuous(breaks=1:13)
+
+bic <- data.frame(round(sum.backward_model$bic,4))
+backward_model.bic.plot <- ggplot(data = bic, aes(y = bic[,1], x = 1:13)) + 
+  geom_point() + geom_line() + 
+  geom_text(aes(label=bic[,1]), size=3, vjust=-0.5) +
+  scale_x_continuous(breaks=1:13)
+
+cp <- data.frame(round(sum.backward_model$cp,4))
+backward_model.cp.plot <- ggplot(data = cp, aes(y = cp[,1], x = 1:13)) + 
+  geom_point() + geom_line() + 
+  geom_text(aes(label=cp[,1]), size=3, vjust=-0.5) +
+  scale_x_continuous(breaks=1:13)
+
+grid.arrange(backward_model.rsq.plot,backward_model.adjrsq.plot,backward_model.bic.plot,backward_model.cp.plot, ncol=2)
+```
+
+##### Selecting best subset
+
+We find the best model is the model with all variables except age and indus
+
+```{r}
+#choose the model 9: the larger, the better (rsq)
+which.max(sum.backward_model$rsq)
+```
+
+```{r}
+#choose the model 11: the larger, the better (adjr)
+which.max(sum.backward_model$adjr2)
+```
+
+```{r}
+#choose the model 11: the smaller, the better (cp)
+which.min(sum.backward_model$cp)
+```
+
+```{r}
+#choose the model 9: the smaller, the better (bic)
+which.min(sum.backward_model$bic)
+```
+
+```{r}
+print("winner is model 11")
+coef(backward_model,11)
+```
+
+#### **Exhaustive Subset Selection**
+
+Last subset selection method is exhaustive search. Here we find the best subset of variables of varying sizes\
+lstat, rm and ptration are the most significant variables\
+Following table shows the variables included in different sized models, along with the BIC, R-squared, adj r-squared, cp values associated with the model
+
+```{r}
+subset_model <- regsubsets(medv~ ., data = Boston_train, nvmax = 13)
+sum.subset_model <- summary(subset_model)
+
+subset_model.subsets <- cbind(sum.subset_model$which, sum.subset_model$bic, sum.subset_model$rsq, sum.subset_model$adjr2,sum.subset_model$cp)
+subset_model.subsets <- as.data.frame(subset_model.subsets) 
+colnames(subset_model.subsets)[15:18] <- c("BIC","rsq","adjr2","cp")
+subset_model.subsets
+```
+
+##### Plotting Model metrics
+
+Checking the 13 models with varying variable size, we plot the model metrics to find out the best model. R-squared keeps on increasing with added variables and hence will always favor model with highest number of variables\
+Model with 11 variables gives the highest Adjusted R-squared value and the lowest cp and BIC values
+
+```{r}
+#PLOTS OF R2, ADJ R2, CP, BIC#
+rsq <- data.frame(round(sum.subset_model$rsq,5))
+subset_model.rsq.plot <- ggplot(data = rsq, aes(y = rsq[,1], x = 1:13)) + 
+  geom_point() + geom_line() + 
+  geom_text(aes(label=rsq[,1]), size=3, vjust=-0.5) +
+  scale_x_continuous(breaks=1:13)
+
+adjr2 <- data.frame(round(sum.subset_model$adjr2,4))
+subset_model.adjrsq.plot <- ggplot(data = adjr2, aes(y = adjr2[,1], x = 1:13)) + 
+  geom_point() + geom_line() + 
+  geom_text(aes(label=adjr2[,1]), size=3, vjust=-0.5) +
+  scale_x_continuous(breaks=1:13)
+
+bic <- data.frame(round(sum.subset_model$bic,4))
+subset_model.bic.plot <- ggplot(data = bic, aes(y = bic[,1], x = 1:13)) + 
+  geom_point() + geom_line() + 
+  geom_text(aes(label=bic[,1]), size=3, vjust=-0.5) +
+  scale_x_continuous(breaks=1:13)
+
+cp <- data.frame(round(sum.subset_model$cp,4))
+subset_model.cp.plot <- ggplot(data = cp, aes(y = cp[,1], x = 1:13)) + 
+  geom_point() + geom_line() + 
+  geom_text(aes(label=cp[,1]), size=3, vjust=-0.5) +
+  scale_x_continuous(breaks=1:13)
+
+grid.arrange(subset_model.rsq.plot,subset_model.adjrsq.plot,subset_model.bic.plot,subset_model.cp.plot, ncol=2)
+```
+
+###### Selecting best subset
+
+Again we find the best model is the model with all variables except age and indus, hence we use that model as our selected model
+
+```{r}
+#choose the model 13: the larger, the better (rsq)
+which.max(sum.subset_model$rsq)
+```
+
+```{r}
+#choose the model 11: the smaller, the better (adjr)
+which.max(sum.subset_model$adjr2)
+```
+
+```{r}
+#choose the model 11: the smaller, the better (cp)
+which.min(sum.subset_model$cp)
+```
+
+```{r}
+#choose the model 9: the smaller, the better (bic)
+which.min(sum.subset_model$bic)
+```
+
+```{r}
+print("winner is model 11")
+coef(subset_model,11)
+```
+
+#### **Selected Model**, all variables except `AGE` and `INDUS`
+
+From our subset selection techniques, we select the model without indus and age as our best model. Summary of the model:
+
+```{r}
+model.ss <- lm(medv ~ . -indus -age, data=Boston_train)
+sum.model.ss <- summary(model.ss)
+sum.model.ss
+```
+
+Getting the model stats:
+
+```{r}
+model.ss.mse <- (sum.model.ss$sigma)^2
+model.ss.rsq <- sum.model.ss$r.squared
+model.ss.arsq <- sum.model.ss$adj.r.squared
+test.pred.model.ss <- predict(model.ss, newdata=Boston_test) 
+model.ss.mpse <- mean((Boston_test$medv-test.pred.model.ss)^2)
+modelss.aic <- AIC(model.ss)
+modelss.bic <- BIC(model.ss)
+
+#ROW#
+stats.model.ss <- c("model.SS", model.ss.mse, model.ss.rsq, model.ss.arsq, model.ss.mpse, modelss.aic, modelss.bic)
+
+data.frame(cbind(comparison_table, stats.model.ss))
+```
+
+### RIDGE & LASSO Variable Selection
+
+Now we use RIDGE and LASSO variable selection technique. We try to shrink the coefficient estimates of non-significant variables to zero.\
+Here lambda is the penalty factor which helps in variable selection and so higher the lambda, lesser will be the significant variables included in the model.
+
+#### Standardize Covariates
+
+We need to standardize the variables before using them in model creation
+
+```{r}
+# Generate a random sample of indices for the training and testing sets
+n <- nrow(Boston)
+index <- sample(seq_len(n), size = floor(0.8*n))
+
+# Subset the data using the index
+Boston.X.std <- scale(dplyr::select(Boston, -medv))
+X.train <- Boston.X.std[index, ]
+X.test <- Boston.X.std[-index, ]
+Y.train <- Boston$medv[index]
+Y.test <- Boston$medv[-index]
+```
+
+#### Fit Model
+
+We fit the RIDGE model and LASSO model to our data. From the plot below, we see that as the value of lambda keeps on increasing, the coefficients for the variables tend to 0.
+
+```{r}
+ridge.fit<- glmnet(x=X.train, y=Y.train, alpha = 0)
+plot(ridge.fit, xvar = "lambda", label=TRUE)
+```
+
+```{r}
+lasso.fit<- glmnet(x=X.train, y=Y.train, alpha = 1)
+plot(lasso.fit, xvar = "lambda", label=TRUE)
+```
+
+#### Cross-Validation to get optimal lambda
+
+Using cross-validation we now find the appropriate lambda value using error versus lambda plot.\
+We take the value with the least error as well as the error value which is one standard deviation away from the lowest error value. we then build models on the basis of both of these. For the higher error value , the number of variables selected decreases.
+
+For model with lambda=min, coefficients of age and indus get reduced to zero. For model with lambda=1se, coefficients of indus, age, rad and tax get reduced to zero
+
+```{r}
+cv.lasso<- cv.glmnet(x=X.train, y=Y.train, alpha = 1, nfolds = 10)
+plot(cv.lasso)
+cv.ridge<- cv.glmnet(x=X.train, y=Y.train, alpha = 1, nfolds = 10)
+plot(cv.lasso)
+```
+
+```{r}
+names(cv.ridge)
+names(cv.lasso)
+```
+
+```{r}
+#Lambda with minimum error
+cv.ridge$lambda.min
+cv.lasso$lambda.min
+```
+
+```{r}
+#Lambda with Error 1 SD above
+cv.ridge$lambda.1se
+cv.lasso$lambda.1se
+```
+
+```{r}
+#Coefficients for Lambda min
+coef(ridge.fit, s=cv.ridge$lambda.min)
+coef(lasso.fit, s=cv.lasso$lambda.min)
+```
+
+```{r}
+#Coefficients for lambda 1se
+coef(ridge.fit, s=cv.lasso$lambda.1se)
+coef(lasso.fit, s=cv.lasso$lambda.1se)
+```
+
+#### Model Statistics
+
+Computing various model performance metrics:
+
+```{r}
+#TRAIN DATA PREDICTION
+pred.ridge.train.min <- predict(ridge.fit, newx = X.train, s=cv.ridge$lambda.min)
+pred.ridge.train.1se <- predict(ridge.fit, newx = X.train, s=cv.ridge$lambda.1se)
+pred.lasso.train.min <- predict(lasso.fit, newx = X.train, s=cv.lasso$lambda.min)
+pred.lasso.train.1se <- predict(lasso.fit, newx = X.train, s=cv.lasso$lambda.1se)
+
+#TEST DATA PREDICTION
+pred.ridge.test.min<- predict(ridge.fit, newx = X.test, s=cv.ridge$lambda.min)
+pred.ridge.test.1se<- predict(ridge.fit, newx = X.test, s=cv.ridge$lambda.1se)
+pred.lasso.test.min<- predict(lasso.fit, newx = X.test, s=cv.lasso$lambda.min)
+pred.lasso.test.1se<- predict(lasso.fit, newx = X.test, s=cv.lasso$lambda.1se)
+
+#MSE
+ridge.min.mse <- sum((Y.train-pred.ridge.train.min)^2)/(404-14)
+ridge.1se.mse <- sum((Y.train-pred.ridge.train.1se)^2)/(404-11)
+lasso.min.mse <- sum((Y.train-pred.lasso.train.min)^2)/(404-14)
+lasso.1se.mse <- sum((Y.train-pred.lasso.train.1se)^2)/(404-11)
+
+#MSPE
+ridge.min.mpse <- mean((Y.test-pred.ridge.test.min)^2)
+ridge.1se.mpse <- mean((Y.test-pred.ridge.test.1se)^2)
+lasso.min.mpse <- mean((Y.test-pred.lasso.test.min)^2)
+lasso.1se.mpse <- mean((Y.test-pred.lasso.test.1se)^2)
+
+#R_squared
+sst <- sum((Y.train - mean(Y.train))^2)
+sse_min <- sum((Y.train-pred.ridge.train.min)^2)
+sse_1se <- sum((Y.train-pred.ridge.train.1se)^2)
+sst <- sum((Y.train - mean(Y.train))^2)
+sse_min <- sum((Y.train-pred.lasso.train.min)^2)
+sse_1se <- sum((Y.train-pred.lasso.train.1se)^2)
+
+rsq_min <- 1 - sse_min / sst
+rsq_1se <- 1 - sse_1se / sst
+
+#adj_R_squared
+#adj r squared = 1 - ((n-1)/(n-p-1))(1-r_squared)
+
+adj_rsq_min <- 1 - (dim(X.train)[1]-1)*(1-rsq_min)/(dim(X.train)[1]-12-1)
+adj_rsq_1se <- 1 - (dim(X.train)[1]-1)*(1-rsq_1se)/(dim(X.train)[1]-10-1)
+
+stats.model.ridge.min <- c("model.ridge.min", ridge.min.mse, rsq_min, adj_rsq_min, ridge.min.mpse)
+stats.model.ridge.1se <- c("model.ridge.1se", ridge.1se.mse, rsq_1se, adj_rsq_1se, ridge.1se.mpse)
+stats.model.lasso.min <- c("model.lasso.min", lasso.min.mse, rsq_min, adj_rsq_min, lasso.min.mpse)
+stats.model.lasso.1se <- c("model.lasso.1se", lasso.1se.mse, rsq_1se, adj_rsq_1se, lasso.1se.mpse)
+
+comparison_table <- c("model type", "MSE", "R-Squared", "Adjusted R-Squared", "Test MSPE")
+data.frame(cbind(comparison_table, stats.model.ridge.min, stats.model.ridge.1se))
+data.frame(cbind(comparison_table, stats.model.lasso.min, stats.model.lasso.1se))
+```
+
+### Comparing models from Subset selection, LASSO with Full model
+
+Comparing the performance of 4 models obtained so far:
+
+-   MSE: MSE of all models are comparable around the 23 mark, except the RIDGE & LASSO.1se model which gives a MSE of 26.39
+
+-   R-Squared: Full model performs best in this category as expected, and the RIDGE & LASSO,1se model performs the worst, as expected again
+
+-   Adjusted R-squared: A better metric for comparing models of diff variable sizes, Subset selection model performs the best here
+
+-   Test MSPE: RIDGE & LASSO.1se model performs the best here with a low MSPE of 18.88. All other models also do a pretty good job with scores around the 19 mark
+
+We select the subset selection model as our best model: Full model - age - indus
+
+```{r}
+data.frame(cbind(comparison_table, c("full", linear_model.mse, linear_model.rsq, linear_model.arsq, linear_model.mpse), c("model.SS", model.ss.mse, model.ss.rsq, model.ss.arsq, model.ss.mpse), stats.model.ridge.min, stats.model.ridge.1se, stats.model.lasso.min, stats.model.lasso.1se))
+```
+
+### Residual Analysis Plots
+
+We do a quick residual analysis of the selected subset model and observe the following:
+
+-   The variance is not completely constant and hence the assumption of constant variance is not totally satisfied
+
+-   From the q-q plot we see that it is not completely normal and a little skewed to the right
+
+-   There is no autocorrelation observed in the model
+
+-   There are no observed outliers
+
+<!-- -->
+
+```{r}
+par(mfrow=c(2,2))
+plot(model.ss)
+```
+
+### Decision Tree
+
+```{r}
+#default value of cp = 0.01
+Boston_tree <- rpart(medv ~ ., data = Boston_train)
+Boston_tree
+```
+
+```{r}
+#Plotting the tree
+rpart.plot(Boston_tree, type = 3, box.palette = c("red", "green"), fallen.leaves = TRUE)
+```
+
+```{r}
+plotcp(Boston_tree)
+```
+
+```{r}
+printcp(Boston_tree)
+```
+
+```{r}
+#Building a large tree
+Boston.largetree <- rpart(formula = medv ~ ., data = Boston_train, cp = 0.001)
+
+plot(Boston.largetree)
+text(Boston.largetree)
+```
+
+```{r}
+plotcp(Boston.largetree)
+```
+
+```{r}
+printcp(Boston.largetree)
+```
+
+```{r}
+#however, from plotcp, we observe that a tree with more than 7 to 9 splits is not very helpful.
+#further pruning the tree to limit to 9 splits;corresponding cp value from plot is 0.0072
+pruned.tree <- prune(Boston.largetree, cp = 0.0072)
+pruned.tree
+```
+
+```{r}
+rpart.plot(pruned.tree, type = 3, box.palette = c("red", "green"), fallen.leaves = TRUE, extra = 1)
+```
+
+```{r}
+#In-sample MSE
+mean((predict(Boston_tree) - Boston_train$medv) ^ 2)      #default tree
+```
+
+```{r}
+mean((predict(Boston.largetree) - Boston_train$medv) ^ 2)  #large tree
+```
+
+```{r}
+mean((predict(pruned.tree) - Boston_train$medv) ^ 2)       #pruned tree
+```
+
+```{r}
+#out-of-sample performance
+#Mean squared error loss for this tree
+mean((predict(Boston_tree, newdata = Boston_test) - Boston_test$medv) ^ 2)  #default tree
+```
+
+```{r}
+mean((predict(Boston.largetree, newdata = Boston_test) - Boston_test$medv) ^ 2)   #large tree
+```
+
+```{r}
+mean((predict(pruned.tree, newdata = Boston_test) - Boston_test$medv) ^ 2)     #pruned tree
+```
+
+```{r}
+# Import the dataset
+data(Boston, package = "MASS")
+
+# Load the rpart package
+library(rpart)
+
+# Create a decision tree model
+fit <- rpart(medv ~ ., data = Boston, method = "anova")
+
+# Print the decision tree
+print(fit)
+
+# Plot the decision tree
+plot(fit)
+text(fit)
+
+```
+
+```{r}
+library(caret)
+
+# Split data into training and testing sets
+set.seed(123)
+trainIndex <- createDataPartition(Boston$medv, p = 0.8, list = FALSE)
+trainData <- Boston[trainIndex, ]
+testData <- Boston[-trainIndex, ]
+
+# Fit the model using the training data
+fit <- rpart(medv ~ ., data = trainData, method = "anova")
+
+# Predict the outcomes for the test data using the fitted model
+predictions <- predict(fit, testData)
+
+# Calculate accuracy metrics
+mse <- mean((testData$medv - predictions)^2)
+rmse <- sqrt(mse)
+mae <- mean(abs(testData$medv - predictions))
+
+# Print the accuracy metrics
+cat(paste("MSE:", mse, "\n"))
+cat(paste("RMSE:", rmse, "\n"))
+cat(paste("MAE:", mae, "\n"))
+
+```
+
+### Random Forest
+
+```{r}
+# Import dataset
+data(Boston, package = "MASS")
+
+# Load randomForest package
+library(randomForest)
+
+# Create random forest model
+fit <- randomForest(medv ~ ., data = Boston)
+
+# Print model results
+print(fit)
+
+# Calculate importance measures
+varImpPlot(fit)
+```
+
+```{r}
+library(caret)
+
+# Split data into training and testing sets
+set.seed(123)
+trainIndex <- createDataPartition(Boston$medv, p = 0.8, list = FALSE)
+trainData <- Boston[trainIndex, ]
+testData <- Boston[-trainIndex, ]
+
+# Fit the model using the training data
+fit <- randomForest(medv ~ ., data = trainData)
+
+# Predict the outcomes for the test data using the fitted model
+predictions <- predict(fit, testData)
+
+# Calculate accuracy metrics
+mse <- mean((testData$medv - predictions)^2)
+rmse <- sqrt(mse)
+mae <- mean(abs(testData$medv - predictions))
+
+# Print the accuracy metrics
+cat(paste("MSE:", mse, "\n"))
+cat(paste("RMSE:", rmse, "\n"))
+cat(paste("MAE:", mae, "\n"))
+
+```
+
+### Gradient Boosting Model
+
+```{r}
+# Import the dataset
+data(Boston, package = "MASS")
+
+# Load the gbm package
+library(gbm)
+library(pdp)
+
+# Create the gradient boosting model
+fit <- gbm(medv ~ ., data = Boston, n.trees = 5000, shrinkage = 0.01, interaction.depth = 4, distribution="gaussian")
+
+# Print the model results
+print(fit)
+
+# Calculate variable importance measures
+summary(fit)
+
+# Calculate PDP
+perf <- gbm.perf(fit)
+
+# Plot the variable importance measures
+plot(fit, main = "Variable Importance")
+
+```
+
+```{r}
+library(caret)
+
+# Split data into training and testing sets
+set.seed(123)
+trainIndex <- createDataPartition(Boston$medv, p = 0.8, list = FALSE)
+trainData <- Boston[trainIndex, ]
+testData <- Boston[-trainIndex, ]
+
+# Fit the model using the training data
+fit <- gbm(medv ~ ., data = trainData, n.trees = 5000, shrinkage = 0.01, interaction.depth = 4, distribution="gaussian")
+
+# Predict the outcomes for the test data using the fitted model
+predictions <- predict(fit, testData)
+
+# Calculate accuracy metrics
+mse <- mean((testData$medv - predictions)^2)
+rmse <- sqrt(mse)
+mae <- mean(abs(testData$medv - predictions))
+
+# Print the accuracy metrics
+cat(paste("MSE:", mse, "\n"))
+cat(paste("RMSE:", rmse, "\n"))
+cat(paste("MAE:", mae, "\n"))
+
+```
+
+### **Generalized Additive Model**
+
+Residual diagnostics of linear regression model showed that the relation between medv and predictor variables may not be linear. Since the correct transformation of predictor variables is not known, GAM can be used to model non-linearity. GAM is fit using smoothing splines, s(), which is available in gam library in R. In the model, smoothing spline is used for all continuous variables except 'chas' and 'rad', which are of integer type and which have less than 10 unique values. It is not recommended to use smoothing splines on such variables.
+
+```{r}
+#model 1 - not using s() on chas and rad, leaving them as integers
+Boston.gam <- gam(medv ~ s(crim) + s(zn) + s(indus) + s(nox) + s(rm) + s(age) + s(dis) + s(tax) + s(ptratio) + s(black) + s(lstat) + chas + rad, data = Boston_train)
+summary(Boston.gam)
+```
+
+```{r}
+#model 2 - removing s() from functions which are linear
+library(gam)
+Boston.gam <- gam(medv ~ s(crim) + zn + s(indus) + s(nox) + s(rm) + age + s(dis) + s(tax) + s(ptratio) + black + s(lstat) + chas + rad, data = Boston_train)
+summary(Boston.gam)
+```
+
+Performance metrics of the model is shown below:
+
+```{r}
+#Model AIC, BIC, mean residual deviance
+AIC(Boston.gam)
+```
+
+```{r}
+BIC(Boston.gam)
+```
+
+```{r}
+Boston.gam$deviance
+
+```
+
+The non-linear relationship of variables with medv can be seen in the following plots:
+
+```{r}
+#plot
+plot(Boston.gam, shade = TRUE, seWithMean = TRUE, scale = 0)
+```
+
+In-sample and out-of-sample prediction errors are shown below:
+
+```{r}
+#In-sample prediction
+(Boston.gam.mse <- mean((predict(Boston.gam) - Boston_train$medv) ^ 2))
+```
+
+```{r}
+#Out-of-sample prediction - MSPE
+Boston.gam.mspe <- mean((predict(Boston.gam, newdata = Boston_test) - Boston_test$medv) ^ 2)
+```
