@@ -1,0 +1,122 @@
+---
+title: "Contact"
+---
+
+# [Portfolio]{style="color: gray;"}
+
+[Webflow](https://ls-portfolio-f75f03.webflow.io/)
+
+<hr>
+
+# [Prospect]{style="color: gray;"}
+
+##### On Campus
+
+[AEM2850](https://aem2850.toddgerarden.com/)
+
+[AEM3100](https://www.youtube.com/channel/UCyr33Vyx21doC9z68yJ3jAw)
+
+[CRP4080](https://skywalkersun15.github.io/cornell_aap_crp_4080_intro_gis/index.html)
+
+[CS1110](https://www.cs.cornell.edu/courses/cs1110/2022fa/)
+
+[INFO2950](https://info2950.infosci.cornell.edu/)
+
+[NTRES6100](https://nt246.github.io/NTRES-6100-data-science/index.html)
+
+<br>
+
+##### Off Campus
+
+[Harvard Online](https://www.harvardonline.harvard.edu/course/cs50s-web-programming-python-javascript)
+
+<br>
+
+##### Software
+
+[D3](https://d3-graph-gallery.com/index.html)
+
+[GeoDa](http://geodacenter.github.io/documentation.html)
+
+[HTML5 Up](https://html5up.net/)
+
+[JMP](https://www.jmp.com/en_us/learning-library.html)
+
+[R for Data Science](https://r4ds.had.co.nz/)
+
+[R for Shiny Application](https://mastering-shiny.org/basic-app.html)
+
+[W3Schools](https://www.w3schools.com/)
+
+<br>
+
+##### Platform
+
+[AgentGPT](https://agentgpt.reworkd.ai/)
+
+[AI Code Translator](https://ai-code-translator.vercel.app/)
+
+[AI PI](https://pi.ai/talk)
+
+[Algorithm Visualizer](https://algorithm-visualizer.org/)
+
+[ChatExcel](https://chatexcel.com/)
+
+[ChatGPTSites](https://lzw.me/x/chatgpt-sites/)
+
+[Coderutil](https://www.coderutil.com/)
+
+[Connected Papers](https://www.connectedpapers.com/)
+
+[DataV](https://datav.aliyun.com/portal/school/atlas/area_selector?spm=a2crr.23498931.graphics-engine.9.2db415ddLvtvYs)
+
+[Datawrapper](https://www.datawrapper.de/)
+
+[Diagram](https://app.diagrams.net/)
+
+[ECharts](https://echarts.apache.org/examples/en/index.html)
+
+[FileGPT](https://filegpt.app/)
+
+[FineBI](https://fanruanclub.com/login/signin?app=frdemo&referrer=https%3A%2F%2Fpcdemo.finebi.com%2Fwebroot%2Fdecision%2Flogin%3Forigin%3D8f40d2de-46ab-40ef-8f62-ded9767de7c6&lang=en)
+
+[Flourish](https://flourish.studio/visualisations/maps/)
+
+[HiPlot](https://hiplot.com.cn/login?redirect=%2Fcloud-tool%2Fdrawing-tool%2Flist)
+
+[JianDaoYun](https://www.jiandaoyun.com/signin?redirect_uri=%2Fdashboard#/app/647a597e1c23db00076e6fbf/dash/5d6643b2e2157f5e97b6c550)
+
+[MapChart](https://www.mapchart.net/)
+
+[Paper Digest](https://www.paperdigest.org/review/)
+
+[Planetcalc](https://planetcalc.com/search/?tag=1337)
+
+[PlotDB](https://plotdb.com/)
+
+[Summit Keyword Graph](https://keywords.groundedai.company/)
+
+[Traffic Analysis Tools](https://ops.fhwa.dot.gov/trafficanalysistools/index.htm)
+
+[Uncody](https://uncody.com/templates)
+
+[VisuAIgo](https://visualgo.net/en)
+
+[Visual Paradigm Online](https://online.visual-paradigm.com/infoart/templates/)
+
+[Wenwen](https://chat.wenwen-ai.com/chat)
+
+[Xueshuchuangxin](http://www.xueshuchuangxin.com/AITools/AITools)
+
+[You](https://you.com/)
+
+[Zipza](https://zipza.com/)
+
+
+
+
+
+
+
+
+

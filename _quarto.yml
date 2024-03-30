@@ -1,0 +1,40 @@
+project:
+  type: website
+
+website:
+  reader-mode: true
+  page-footer: "©LS"
+  title: "Work"
+  sidebar:
+    style: "docked"
+    search: true
+    contents: 
+      - section: "Boston"
+        contents: 
+          - Boston.qmd
+      - section: "Airports"
+        contents: 
+          - Airports.qmd
+  navbar:
+    left:
+      - text: "Home"
+        href: index.html
+      - text: "About"
+        menu:
+          - text: "Boston"
+            href: Boston.html
+          - text: "Airports"
+            href: Airports.html
+      - text: "Contact"
+        href: Contact.html
+    right:
+      - icon: github
+        href: https://github.com/ls5340?tab=repositories
+format:
+  html:
+    theme: cosmo
+    css: styles.css
+    toc: true
+
+editor: visual
+
